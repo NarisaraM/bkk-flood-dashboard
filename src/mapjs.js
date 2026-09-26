@@ -94,7 +94,11 @@ function buildMap(){
   rainLayer=L.layerGroup().addTo(map);
   wlLayer=L.layerGroup().addTo(map);
   roadLayer=L.layerGroup().addTo(map);
-  map.fitBounds(distLayer.getBounds(),{padding:[10,10]});
+  map.setView([13.85,100.39],9.75);
+  // กล่องแผนที่อาจยังไม่มีขนาดตอนโหลด: ปรับขนาดและซูมพอดีใหม่เมื่อกล่องได้ขนาดจริง จนกว่าผู้ใช้จะเลื่อน/ซูมเอง
+  let userMoved=false;
+  map.on("dragstart zoomstart",e=>{ if(!fitting) userMoved=true; });
+  new ResizeObserver(()=>{ map.invalidateSize(); if(!userMoved) fitCurrent(); }).observe($("#map"));
   [["#lyrWl",wlLayer],["#lyrRain",rainLayer],["#lyrRoad",roadLayer]].forEach(([id,lyr])=>{
     $(id).addEventListener("change",e=>e.target.checked?lyr.addTo(map):map.removeLayer(lyr));
   });
@@ -118,11 +122,17 @@ function renderMap(){
     const icon=L.divIcon({className:"",html:`<div class="roadpin" style="background:${css(RC[r.c])}"></div>`,iconSize:[14,14],iconAnchor:[7,7]});
     L.marker(r.ll,{icon,keyboard:true,title:r.r}).bindPopup(()=>roadPopup(r)).addTo(roadLayer);
   });
-  if(prov==="ทั้งหมด") map.fitBounds(distLayer.getBounds(),{padding:[10,10]});
-  else{
-    const ls=distLayer.getLayers().filter(l=>l.feature.properties.p===prov);
-    if(ls.length) map.fitBounds(L.featureGroup(ls).getBounds(),{padding:[16,16]});
-  }
+  fitCurrent();
+}
+
+let fitting=false;
+function fitCurrent(){
+  const sz=map.getSize(); if(!sz.x||!sz.y) return;
+  const ls=prov==="ทั้งหมด"?distLayer.getLayers():distLayer.getLayers().filter(l=>l.feature.properties.p===prov);
+  if(!ls.length) return;
+  fitting=true;
+  map.fitBounds(L.featureGroup(ls).getBounds(),{padding:[12,12],animate:false});
+  fitting=false;
 }
 
 // ปุ่ม "ดูบนแผนที่" ในการ์ดพื้นที่
