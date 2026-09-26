@@ -1,0 +1,44 @@
+name: Update flood data
+
+on:
+  schedule:
+    - cron: "7 * * * *"   # ทุกชั่วโมง นาทีที่ 7 (UTC) — GitHub อาจดีเลย์ได้หลายนาทีช่วงคนใช้เยอะ
+  workflow_dispatch:       # กดรันเองได้จากแท็บ Actions
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch ThaiWater data and rebuild page
+        run: |
+          python fetch_data.py
+          python build.py
+
+      - name: Commit if water level or rain changed
+        run: |
+          # เทียบเฉพาะข้อมูลสถานี ไม่นับเวลา fetched เพื่อไม่ให้ commit ทั้งที่ไม่มีอะไรเปลี่ยน
+          if git diff --quiet HEAD -- data/data.json || \
+             [ "$(git show HEAD:data/data.json | python -c 'import json,sys;d=json.load(sys.stdin);d.pop("fetched",None);print(json.dumps(d,sort_keys=True))')" = \
+               "$(python -c 'import json;d=json.load(open("data/data.json",encoding="utf-8"));d.pop("fetched",None);print(json.dumps(d,sort_keys=True))')" ]; then
+            echo "No new station data"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/data.json index.html
+          git commit -m "Update flood data $(TZ=Asia/Bangkok date '+%Y-%m-%d %H:%M')"
+          git push

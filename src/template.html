@@ -151,12 +151,12 @@ footer{font-size:12px;color:var(--ink3);line-height:1.7}
       <h1>เฝ้าระวังน้ำท่วม กทม.–ปริมณฑล</h1>
     </div>
     <div class="stamp">
-      <span>ข้อมูลโทรมาตร ณ <b>26 ก.ย. 2569 · 10:20 น.</b></span>
-      <span>ฝนสะสม 24 ชม. ถึง 10:00 น. · ข่าวจุดท่วมถึงเช้า 26 ก.ย.</span>
+      <span>ข้อมูลโทรมาตร ณ <b id="stampWl"></b></span>
+      <span id="stampSub"></span>
     </div>
   </header>
 
-  <div class="alert" role="status">
+  <div class="alert" role="status" id="newsAlert">
     <span class="dot" aria-hidden="true"></span>
     <div>
       <strong>กทม. เตรียมประกาศเขตภัยพิบัติทั้ง 50 เขต (26 ก.ย.)</strong>
@@ -196,7 +196,7 @@ footer{font-size:12px;color:var(--ink3);line-height:1.7}
   </section>
 
   <section>
-    <div class="sechead"><h2>สถานะรายพื้นที่</h2><span class="small muted">ประเมินจากฝน 24 ชม. ระดับน้ำคลองเทียบตลิ่ง และรายงานจุดท่วมขัง</span></div>
+    <div class="sechead"><h2>สถานะรายพื้นที่</h2><span class="small muted" id="zoneNote"></span></div>
     <div class="zones" id="zones"></div>
   </section>
 
@@ -216,7 +216,7 @@ footer{font-size:12px;color:var(--ink3);line-height:1.7}
   </section>
 
   <section>
-    <div class="sechead"><h2>ถนนน้ำท่วมขัง ควรเลี่ยง</h2><span class="small muted">จากศูนย์ป้องกันน้ำท่วม กทม. และสื่อ 25–26 ก.ย.</span></div>
+    <div class="sechead"><h2>ถนนน้ำท่วมขัง ควรเลี่ยง</h2><span class="small muted">จากศูนย์ป้องกันน้ำท่วม กทม. และสื่อ 25–26 ก.ย. <span class="stale news-old" hidden>· ข่าวเก่ากว่า 1 วัน อาจไม่เป็นปัจจุบัน</span></span></div>
     <div class="roads">
       <div class="panel">
         <h3 style="margin-bottom:6px">รถเล็กห้ามผ่าน · 26 ก.ย.</h3>
@@ -245,7 +245,7 @@ footer{font-size:12px;color:var(--ink3);line-height:1.7}
   </section>
 
   <footer>
-    ที่มา: ขอบเขตเขต/อำเภอจาก OpenGISData-Thailand · ระดับน้ำและฝนจาก ThaiWater API (สสน.) ดึงเมื่อ 26 ก.ย. 2569 10:39 น. · จุดท่วมและประกาศจาก Nation Thailand, กรุงเทพธุรกิจ, Thai PBS (25–26 ก.ย. 2569) ·
+    ที่มา: ขอบเขตเขต/อำเภอจาก OpenGISData-Thailand · ระดับน้ำและฝนจาก ThaiWater API (สสน.) ดึงเมื่อ <span id="stampFetch"></span> อัปเดตอัตโนมัติทุกชั่วโมง · จุดท่วมและประกาศจาก Nation Thailand, กรุงเทพธุรกิจ, Thai PBS (25–26 ก.ย. 2569) ·
     ระดับพื้นที่ในหน้านี้เป็นการประเมินรวมจากข้อมูลข้างต้น ไม่ใช่ประกาศทางราชการ · ตรวจสอบจากแหล่งทางการก่อนเดินทาง
   </footer>
 </div>
@@ -301,24 +301,61 @@ const lvColor = p => p>100 ? "var(--crit)" : p>=70 ? "var(--high)" : "var(--ok)"
 const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const shortProv = p => p==="กรุงเทพมหานคร" ? "กทม." : p;
 
+// เวลา: ข้อมูลโทรมาตรอัปเดตอัตโนมัติ ส่วนข่าว (ZONES.pts, ROADS, alert) แก้มือ
+const NEWS_UNTIL = "2026-09-27 12:00";   // หลังเวลานี้ สถานะพื้นที่คิดจากข้อมูลสถานีอย่างเดียว
+const FETCHED = DATA.fetched || DATA.wl.map(w=>w.t).sort().pop();
+const newsFresh = FETCHED <= NEWS_UNTIL;
+const toDate = s => new Date(s.replace(" ","T")+":00+07:00");
+const fresh = t => toDate(FETCHED) - toDate(t) <= 3*3600e3;   // วัดภายใน 3 ชม.
+const TH_MON = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+const thDate = s => `${+s.slice(8,10)} ${TH_MON[+s.slice(5,7)-1]} ${+s.slice(0,4)+543} · ${s.slice(11,16)} น.`;
+const latest = arr => arr.map(x=>x.t).filter(Boolean).sort().pop() || FETCHED;
+$("#stampWl").textContent = thDate(latest(DATA.wl.filter(w=>fresh(w.t))));
+$("#stampSub").textContent = `ฝนสะสม 24 ชม. ถึง ${latest(DATA.rain).slice(11,16)} น. · ข่าวจุดท่วมถึงเช้า 26 ก.ย.`;
+$("#stampFetch").textContent = thDate(FETCHED);
+if(!newsFresh){
+  $("#newsAlert").hidden = true;
+  document.querySelectorAll(".news-old").forEach(e=>e.hidden=false);
+}
+
 // KPIs
-const over = DATA.wl.filter(w=>w.pct>100 && w.t.startsWith("2026-09-26")).length;
+const over = DATA.wl.filter(w=>w.pct>100 && fresh(w.t)).length;
 const maxR = DATA.rain[0];
 const heavy = DATA.rain.filter(r=>r.r24>90).length;
 $("#kpis").innerHTML = [
   ["c", over, "สถานี", "คลอง/แม่น้ำล้นตลิ่งตอนนี้"],
   ["c", maxR.r24, "มม.", "ฝน 24 ชม. สูงสุด · "+maxR.a],
   ["", heavy, "/"+DATA.rain.length, "สถานีฝนหนักมาก (>90 มม.)"],
-  ["", 7, "จุด", "ถนนที่รถเล็กห้ามผ่าน"]
+  ["", DATA.wl.filter(w=>w.pct>=70 && fresh(w.t)).length, "/"+DATA.wl.length, "สถานีระดับน้ำเกิน 70% ของตลิ่ง"]
 ].map(([c,v,u,l])=>`<div class="kpi ${c}"><div class="v">${v}<small>${u}</small></div><div class="l">${esc(l)}</div></div>`).join("");
 
-// Zones
+// Zones: ตัวเลขและสถานะคำนวณจากข้อมูลสถานี; ถ้าข่าวยังไม่หมดอายุ ใช้ระดับที่รุนแรงกว่าระหว่างข่าวกับข้อมูล
+const RANK = {ok:0,watch:1,high:2,crit:3}, BY_RANK = ["ok","watch","high","crit"];
+function computeZones(){
+  const zOfSt = x => zoneOf({pc:x.p==="กรุงเทพมหานคร"?"10":"", p:x.p, a:x.a}).name;
+  ZONES.forEach(z=>{
+    const rs = DATA.rain.filter(r=>zOfSt(r)===z.name && r.r24!=null);
+    const ws = DATA.wl.filter(w=>zOfSt(w)===z.name && fresh(w.t));
+    z.rain = rs.length ? Math.max(...rs.map(r=>r.r24)) : 0;
+    const pct = ws.length ? Math.max(...ws.map(w=>w.pct)) : 0;
+    z.top = ws.length ? pct.toFixed(0)+"%" : "–";
+    const data = pct>100 || z.rain>=200 ? "crit" : z.rain>=90 || pct>=90 ? "high" : z.rain>=35 || pct>=70 ? "watch" : "ok";
+    z.news = z.news || z.s;
+    z.s = newsFresh ? BY_RANK[Math.max(RANK[data],RANK[z.news])] : data;
+  });
+}
+function renderZones(){
+computeZones();
+$("#zoneNote").textContent = newsFresh
+  ? "ประเมินจากฝน 24 ชม. ระดับน้ำเทียบตลิ่ง และข่าวจุดท่วมขัง"
+  : "ประเมินจากฝน 24 ชม. และระดับน้ำเทียบตลิ่ง · รายละเอียดเป็นข่าว 25–26 ก.ย. อาจไม่เป็นปัจจุบัน";
 $("#zones").innerHTML = ZONES.map(z=>`
   <article class="zone">
     <div class="top"><div><h3>${z.name}</h3><div class="prov">${z.prov}</div></div><span class="pill s-${z.s}">${SLABEL[z.s]}</span></div>
     <ul>${z.pts.map(p=>`<li>${p}</li>`).join("")}</ul>
     <div class="stats"><span>ฝนสูงสุด<b>${z.rain} มม.</b></span><span>ระดับน้ำสูงสุด<b>${z.top}</b></span><button class="chip" style="margin-left:auto;align-self:center" data-zone="${z.name}">ดูบนแผนที่</button></div>
   </article>`).join("");
+}
 
 // Province filter
 const PROVS = ["ทั้งหมด","กรุงเทพมหานคร","นนทบุรี","ปทุมธานี","สมุทรปราการ","นครปฐม","สมุทรสาคร"];
@@ -348,7 +385,7 @@ function renderWL(){
   $("#wlBody").innerHTML=DATA.wl.filter(inProv).map(w=>{
     const d=w.prev!=null?w.wl-w.prev:0;
     const tr=Math.abs(d)<0.005?`<span class="trend muted">คงที่</span>`:d>0?`<span class="trend" style="color:var(--crit)">▲ ${(d*100).toFixed(0)} ซม.</span>`:`<span class="trend" style="color:var(--ok)">▼ ${(-d*100).toFixed(0)} ซม.</span>`;
-    const stale=!w.t.startsWith("2026-09-26")?`<div class="stale">ข้อมูลล่าสุด ${w.t.slice(5,16)} อาจไม่เป็นปัจจุบัน</div>`:"";
+    const stale=!fresh(w.t)?`<div class="stale">ข้อมูลล่าสุด ${w.t.slice(5,16)} อาจไม่เป็นปัจจุบัน</div>`:"";
     return `<tr><td>${esc(w.n)}${stale}</td><td class="small muted">${esc(w.a)}, ${esc(shortProv(w.p))}</td>
       <td class="num small">${w.wl.toFixed(2)} / ${w.bank}</td>
       <td><div class="gauge"><i style="width:${Math.min(w.pct,130)/1.3}%;background:${lvColor(w.pct)}"></i></div></td>
@@ -361,5 +398,6 @@ const DC={c:"s-crit",h:"s-high",w:"s-watch"};
 $("#roadsB").innerHTML=ROADS_B.map(([r,w,d,c])=>`<div class="road"><span class="d ${DC[c]}">${d}</span><div>${r}<div class="where">${w}</div></div></div>`).join("");
 
 function renderAll(){renderChips();renderMap();renderRain();renderWL()}
+renderZones();
 renderAll();
 </script>

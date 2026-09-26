@@ -57,7 +57,7 @@ function wlPopup(w){
     <div class="row"><span>ระดับตลิ่ง</span><b>${w.bank} ม.รทก.</b></div>
     <div class="row"><span>แนวโน้ม</span><b>${tr}</b></div>
     <div class="row"><span>เวลาวัด</span><b>${w.t.slice(8,10)}/${w.t.slice(5,7)} ${w.t.slice(11)} น.</b></div>
-    ${!w.t.startsWith("2026-09-26")?`<div class="stale">ข้อมูลไม่อัปเดตตั้งแต่ ${w.t.slice(5,16)}</div>`:""}</div>`;
+    ${!fresh(w.t)?`<div class="stale">ข้อมูลไม่อัปเดตตั้งแต่ ${w.t.slice(5,16)}</div>`:""}</div>`;
 }
 function rainPopup(r){
   const cls=r.r24>90?["crit","ฝนหนักมาก"]:r.r24>35?["high","ฝนหนัก"]:r.r24>10?["watch","ฝนปานกลาง"]:["ok","ฝนเล็กน้อย"];

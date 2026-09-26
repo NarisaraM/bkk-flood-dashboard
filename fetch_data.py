@@ -5,6 +5,7 @@
 """
 import json
 import urllib.request
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 API = "https://api-v3.thaiwater.net/api/v1/thaiwater30/public/"
@@ -38,9 +39,10 @@ for x in get("waterlevel_load")["waterlevel_data"]["data"]:
                    lv=x["situation_level"], t=x["waterlevel_datetime"],
                    lat=s["tele_station_lat"], lon=s["tele_station_long"]))
 
+fetched = datetime.now(timezone(timedelta(hours=7))).strftime("%Y-%m-%d %H:%M")
 rain.sort(key=lambda x: -(x["r24"] or 0))
 wl.sort(key=lambda x: -x["pct"])
 out = Path(__file__).parent / "data" / "data.json"
-out.write_text(json.dumps(dict(rain=rain, wl=wl), ensure_ascii=False,
+out.write_text(json.dumps(dict(fetched=fetched, rain=rain, wl=wl), ensure_ascii=False,
                           separators=(",", ":")), encoding="utf-8")
 print(f"rain stations: {len(rain)}, water level stations: {len(wl)}")
